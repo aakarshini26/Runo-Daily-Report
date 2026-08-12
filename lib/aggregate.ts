@@ -28,6 +28,38 @@ export function computeTotals(rows: CallRow[]): Totals {
   );
 }
 
+export interface DailyPoint {
+  date: string;
+  inbound: Totals;
+  outbound: Totals;
+  total: Totals;
+}
+
+function emptyTotals(): Totals {
+  return { calls: 0, connected: 0, talktimeSeconds: 0 };
+}
+
+/** Groups rows by date, split into inbound/outbound/total — for trend charts. */
+export function groupByDate(rows: CallRow[]): DailyPoint[] {
+  const map = new Map<string, DailyPoint>();
+
+  for (const r of rows) {
+    if (!map.has(r.date)) {
+      map.set(r.date, { date: r.date, inbound: emptyTotals(), outbound: emptyTotals(), total: emptyTotals() });
+    }
+    const point = map.get(r.date)!;
+    const bucket = r.callType === "Inbound" ? point.inbound : point.outbound;
+    bucket.calls += r.calls;
+    bucket.connected += r.connected;
+    bucket.talktimeSeconds += r.talktimeSeconds;
+    point.total.calls += r.calls;
+    point.total.connected += r.connected;
+    point.total.talktimeSeconds += r.talktimeSeconds;
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export function applyFilters(
   rows: CallRow[],
   filters: {
